@@ -1,0 +1,45 @@
+@charset "UTF-8";
+/* styles propres au module quiz (utilise les variables de base.css et les classes de games.css) */
+
+/* ------------------------------------------------------------- moteur « à vote » (Tu préfères, Qui est le plus, Quiz express) */
+.pl { display: flex; flex-direction: column; gap: 14px; }
+.pl-top { display: flex; align-items: center; gap: 12px; }
+.pl-top .ks-timer { flex: 1; min-width: 0; }
+.pl-round { flex: none; font-variant-numeric: tabular-nums; }
+.pl-q { min-height: 150px; }
+.pl-q.small { min-height: 0; padding: 16px 18px; }
+.pl-opts { grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); }
+.pl-opt { display: flex; align-items: center; gap: 12px; text-align: left; min-height: 64px; padding: 12px 14px; animation: popIn .4s var(--bounce) both; animation-delay: calc(var(--i, 0) * 70ms); }
+.pl-opt .pl-text { min-width: 0; overflow-wrap: anywhere; }
+.pl-key { flex: none; width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--grad); color: var(--accent-ink); font-weight: 800; font-size: .9rem; }
+.pl-opts.people .pl-opt { flex-direction: column; justify-content: center; text-align: center; gap: 6px; min-height: 92px; }
+.pl-opts.people .pl-name { max-width: 100%; font-size: .92rem; }
+.pl-opt:disabled { opacity: .92; }
+.pl-opt.sel { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+.pl-voters { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.pl-v { position: relative; opacity: .45; filter: grayscale(.5); transition: opacity .25s, filter .25s, transform .3s var(--bounce); }
+.pl-v.done { opacity: 1; filter: none; transform: scale(1.05); }
+.pl-v.off { opacity: .25; }
+.pl-tick { position: absolute; right: -3px; bottom: -3px; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; background: var(--good); color: #052e1a; border: 2px solid var(--surface-solid); }
+.pl-wait { min-height: 1.4em; }
+.pl-results { display: flex; flex-direction: column; gap: 10px; }
+.pl-row { animation: slideInLeft .4s var(--ease) both; animation-delay: calc(var(--i, 0) * 80ms); }
+.pl-row > span { gap: 10px; }
+.pl-lab { display: flex; align-items: center; gap: 10px; min-width: 0; text-align: left; }
+.pl-cnt { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-display); font-weight: 800; font-variant-numeric: tabular-nums; }
+.pl-row.mine { border-color: var(--accent); }
+.pl-row.ok { border-color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--surface)); }
+.pl-row.ok > i { background: color-mix(in srgb, var(--good) 38%, transparent); }
+.pl-row.ko { border-color: var(--bad); }
+.pl-row.ko > i { background: color-mix(in srgb, var(--bad) 32%, transparent); }
+.pl-row.lead > i { background: color-mix(in srgb, var(--accent-2) 42%, transparent); }
+.pl-row.lead .pl-cnt { color: var(--warn); }
+.pl-voters-row { position: relative; display: flex; flex-wrap: wrap; gap: 4px; padding: 0 14px 10px; }
+.pl-gains { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.pl-gain { animation: bounceIn .5s var(--bounce) both; }
+.pl-gain b { color: var(--good); margin-left: 4px; }
+.pl-gain.me { border-color: var(--good); }
+@media (max-width: 520px) {
+  .pl-opts:not(.people) { --cols: 1 !important; }
+  .pl-q { min-height: 120px; }
+}

@@ -1,0 +1,32 @@
+@charset "UTF-8";
+/* styles propres au module tools (utilise les variables de base.css et les classes de games.css) */
+
+/* ------------------------------------------------------------- La roue (wheel) */
+.wh { display: flex; flex-direction: column; gap: 16px; align-items: stretch; }
+.wh-head { display: flex; align-items: center; gap: 14px; }
+.wh-head h3 { margin: 0; }
+.wh-modes { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.wh-stage { display: block; width: min(100%, 420px); margin: 0 auto; padding: 0; border: 0; background: transparent; cursor: pointer; border-radius: 50%; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.wh-stage:focus-visible { outline: 3px solid var(--accent); outline-offset: 6px; }
+.wh-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.wh-rim { fill: #1b1340; stroke: rgb(255 255 255 / .35); stroke-width: 1.5; }
+.wh-label { paint-order: stroke; stroke: rgb(0 0 0 / .28); stroke-width: .8px; letter-spacing: .02em; }
+.wh-bulb { fill: #fde68a; }
+.wh-bulb.b0 { animation: whBlink 1s steps(1) infinite; }
+.wh-bulb.b1 { animation: whBlink 1s steps(1) infinite .5s; }
+@keyframes whBlink { 50% { opacity: .25; } }
+.wh-pointer { fill: #fff; stroke: rgb(0 0 0 / .4); stroke-width: 1.5; filter: drop-shadow(0 3px 3px rgb(0 0 0 / .5)); }
+.wh-result { min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 16px; border-radius: var(--radius); border: 1px dashed var(--border-strong); text-align: center; }
+.wh-result.on { border-style: solid; border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); font-family: var(--font-display); font-size: clamp(1.3rem, 5vw, 1.9rem); animation: bounceIn .5s var(--bounce) both; }
+.wh-result.on svg { color: var(--accent); flex: none; }
+.wh-result b { min-width: 0; }
+.wh-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.wh-edit { display: flex; flex-direction: column; gap: 12px; }
+.wh-add { display: flex; gap: 8px; }
+.wh-input { flex: 1; min-width: 0; }
+.wh-item { padding-right: 4px; }
+.wh-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }
+.wh-x { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 0; background: var(--surface-2); color: var(--muted); }
+.wh-x:hover { background: var(--bad); color: #fff; }
+.wh-presets { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+@media (pointer: coarse) { .wh-x { width: 34px; height: 34px; } }
