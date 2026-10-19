@@ -1,0 +1,35 @@
+@charset "UTF-8";
+/* styles propres au module speed (utilise les variables de base.css et les classes de games.css) */
+
+/* ------------------------------------------------------------- Duel de réflexes (reflex) */
+.rf { display: flex; flex-direction: column; gap: 14px; }
+.rf-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.rf-pad { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: min(52vh, 340px); padding: 24px; border-radius: var(--radius-lg); border: 2px solid rgb(255 255 255 / .12); font-family: var(--font-display); font-weight: 800; font-size: clamp(1.7rem, 7vw, 2.7rem); line-height: 1.1; color: #fff; text-align: center; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; transition: background .1s, transform .12s, box-shadow .2s; }
+.rf-pad:disabled { cursor: default; }
+.rf-pad svg { width: 60px; height: 60px; filter: drop-shadow(0 4px 10px rgb(0 0 0 / .35)); }
+.rf-pad.wait { background: linear-gradient(160deg, #991b1b, #ef4444); box-shadow: 0 18px 44px -18px #ef4444aa; }
+.rf-pad.wait svg { animation: rfSand 2.4s ease-in-out infinite; }
+.rf-pad.go { background: linear-gradient(160deg, #15803d, #4ade80); color: #052e16; box-shadow: 0 0 0 8px #22c55e40, 0 22px 60px -14px #22c55ee0; animation: rfGo .32s var(--bounce); }
+.rf-pad.early { background: linear-gradient(160deg, #9a3412, #fb923c); animation: shake .45s; }
+.rf-pad.done { background: linear-gradient(160deg, #1d4ed8, #38bdf8); }
+.rf-pad.watch { background: var(--surface-2); color: var(--text); border-color: var(--border-strong); cursor: default; }
+.rf-pad:active:not(:disabled) { transform: scale(.985); }
+.rf-ms { font-variant-numeric: tabular-nums; font-size: 1.25em; }
+@keyframes rfGo { from { transform: scale(.93); } to { transform: none; } }
+@keyframes rfSand { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(180deg); } }
+.rf-voters { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.rf-v { position: relative; opacity: .45; filter: grayscale(.5); transition: opacity .25s, filter .25s, transform .3s var(--bounce); }
+.rf-v.done { opacity: 1; filter: none; transform: scale(1.05); }
+.rf-v.off { opacity: .25; }
+.rf-tick { position: absolute; right: -3px; bottom: -3px; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; background: var(--good); color: #052e1a; border: 2px solid var(--surface-solid); }
+.rf-res { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.rf-res li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--border); animation: slideInLeft .4s var(--ease) both; animation-delay: calc(var(--i, 0) * 60ms); }
+.rf-res li.me { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+.rf-res .rank { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: .85rem; background: var(--surface-2); color: var(--muted); }
+.rf-res .rank.r1 { background: linear-gradient(145deg, #fde68a, #f59e0b); color: #3b2200; }
+.rf-res .rank.r2 { background: linear-gradient(145deg, #f1f5f9, #94a3b8); color: #1e293b; }
+.rf-res .rank.r3 { background: linear-gradient(145deg, #fdba74, #b45309); color: #2b1300; }
+.rf-res .who { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.rf-res .t { font-family: var(--font-display); font-weight: 800; font-variant-numeric: tabular-nums; }
+.rf-res .t.bad { color: var(--bad); font-weight: 700; font-size: .9rem; }
+.rf-res .pts { min-width: 3ch; text-align: right; color: var(--good); font-weight: 800; }
