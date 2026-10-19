@@ -1,0 +1,178 @@
+YunoParty — activity contract
+
+Everything an activity author needs. Read this, then js/games/boards/tictactoe.js (reference turn-based game),
+js/games/kit.js (the building blocks, with a doc-comment on every export) and tests/games/tictactoe.test.mjs
+(reference test). Code comments in this repo are written in French; user-facing strings are bilingual (FR + EN).
+
+
+1. What an activity is
+
+A module js/games/<cat>/<id>.js whose default export is:
+
+
+export default {
+  id: 'connect4',                       // = file name
+  cat: 'boards',                        // = folder (boards | cards | quiz | creative | speed | social | tools)
+  icon: 'connect4',                      // an icon NAME from js/icons.js (inline SVG) — never an emoji
+  name: { fr: 'Puissance 4', en: 'Connect Four' },
+  desc: { fr: '…', en: '…' },           // one sentence, ≤ 140 chars each
+  min: 2, max: 2, minutes: 5,           // players, estimated duration
+  tags: ['duel', 'brain'],              // from js/games/categories.js (TAGS)
+  mount(api, root) { …; return () => cleanup(); },   // root = empty <div class="act-root">
+};
+
+
+The module must import cleanly under Node (no DOM access at import time): node tools/build-registry.mjs imports every activity to build the catalogue. DOM is only touched inside mount().
+
+mount builds the UI inside root and returns a cleanup function (or nothing — everything registered through api.* is cleaned automatically; only DOM listeners on window/document need api.cleanup(() => …)).
+
+Pure game logic (rules, scoring, parsing) goes in exported pure functions (see derive in tictactoe.js) so it can be unit-tested with node:test without a browser.
+
+
+2. Architecture rules (read twice — this is where bugs come from)
+
+The room is a peer-to-peer replicated key/value store (last-writer-wins per key, Lamport clock). There is no server
+logic: every client runs the same code and converges on the same state.
+
+
+
+Render from shared state only. UI = f(shared state, my id). Never keep game-relevant state only in a local variable: a player who refreshes, reconnects or joins late must see exactly the same thing from the store alone. (Local-only UI state — which tab is open, a half-typed answer — is fine.)
+
+Derive, don't send. Initial state is derived from ctx.seed + ctx.players (same on every client; use ctx.rng(salt)); only moves/answers are written. Replay moves with a pure function (derive(moves)), like tictactoe.
+
+One writer per key. Each player writes only keys that contain their own id (submissions()), or the player whose turn it is writes the next move (moveLog()). Never two players writing the same key at the same time.
+
+Idempotent writes. The same transition may be attempted by several clients (e.g. every client notices the timer expired). Writing the same value twice is a no-op in the store; guard phase changes with pm.go(name, data, {from: pm.n}).
+
+Automatic steps are driven by the authority (api.isAuthority() = oldest online member; it moves by itself if that person leaves). phases() already does this. Inside your own api.every tick, check api.isAuthority().
+
+Time is api.now() (synchronised across players), never Date.now(). Store absolute deadlines (endsAt), not durations left. Use api.after / api.every for timers (auto-cleaned; scaled in tests).
+
+No writes during render. Rendering may run many times. Writes happen in event handlers or in api.every/after ticks. (Writes inside a notification are queued, never nested, but a render that writes is still a smell.)
+
+Spectators exist. ctx.isPlayer is false for people without a seat: they see the game, they can't act.
+
+Frequency/size. ≤ ~10 writes/s per player, each value < 8 KB. High-frequency data (cursor, drawing in progress) goes through api.emit(type, data) (ephemeral, not stored); commit the final result to the store.
+
+Hidden information. Anything everyone can read in the store is readable by a curious friend with dev-tools. For secrets that matter (roles, words, hands, hidden boards) use api.secret.put(userId, key, value) / api.secret.get(key) (private to the recipient). For simultaneous choices use commit/reveal (commit(), verify()).
+
+Clean up. Remove every listener/timer you add outside api.*. After mount's cleanup the activity must leave no trace.
+
+Don't touch shared files (kit.js, api.js, base.css, games.css, core…). If you need a helper, put it in your own file js/games/<cat>/_<name>.js (names starting with _ are not activities).
+
+
+3. api (see js/games/api.js)
+
+api.me	{id, name, avatar, color}
+api.tr({fr,en})	pick the current language (a plain string passes through). All visible text goes through it.
+api.lang, api.h	language code; hyperscript helper
+api.members() / api.online(id) / api.member(id) / api.onMembers(cb)	present members (arrival order)
+api.get(k) / set(k,v) / del(k) / list(prefix) / onChange(cb(keys,local))	shared state of this activity (JSON). Keys are namespaced automatically.
+api.keep.*	same, but persisted server-side (survives everybody leaving): only for durable tools
+api.reset()	wipe this activity's shared state
+api.now()	synchronised clock (ms)
+api.emit(type, data, {self?, to?}) / api.on(type, cb(data, from))	ephemeral events
+api.secret.put/get/list/onChange/clear	private messages to one member
+api.every(fn, ms) / api.after(fn, ms)	auto-cleaned timers, return a stop function
+api.isAuthority() / api.isHost() / api.authority()	who drives automatic steps / creator of the party
+api.fx.confetti({x,y}) / fireworks() / rain(ms) / floatIcon(reactionId,{x,y}) / haptic() and api.sound(name)	feedback
+api.chat(text)	post a system line in the room chat; api.invite() opens the invite dialog
+api.cleanup(fn)	register your own teardown
+
+Sounds: click tick pop ding bell coin win tada lose error buzz whoosh card dice reveal start ready join leave message sparkle kaboom airhorn drumroll rimshot sadtrombone applause boo laser boing fart.
+
+
+Helpers: js/dom.js (h, clamp, sleep…), js/games/lib.js (mulberry32, shuffle(arr, rnd), pick, randInt(rnd,min,max),
+avatar(member,size), chip, leaderboard, notice, countdown(api, startAt, {onGo}), MEDALS, fmtMs, trPick).
+
+
+h(tag, props, ...children): class, style (object, --vars ok), on<event>, dataset, aria-*, booleans; text children are
+text nodes (never interpreted as HTML — that's why innerHTML is forbidden). h('svg', …) / h('svg:path', …) build SVG.
+
+
+4. The kit (js/games/kit.js)
+
+
+session(api, root, {min,max,mode:'seats'|'all',teams,title,rules,icon,render(el,ctx)}) — lobby with seats (or "everybody present plays"), start/restart/back-to-lobby, spectators. ctx = {players, ids, seed, round, seat, isPlayer, rng(salt), end(), restart(), present(id), teams}.
+
+turnGame(api, root, {derive, legal, render, tag, …}) — use this for any turn-based game: tictactoe.js is the model.
+
+phases(api, {phases:{question:{ms:20000,next:'reveal'},…}, onPhase(pm)}) — authority-driven timed state machine (pm.go/patch/name/data/timeLeft). Ideal for rounds (question → reveal → next).
+
+scores(api) idempotent per-round points; rankingEl(api, sc.ranking(ids)) ready-made leaderboard.
+
+submissions(api, key) each player sends one value, reveal when everybody answered.
+
+moveLog(api) numbered moves (one key each). commit/verify commit-reveal. timerBar(api, endsAt, totalMs), playersStrip, banner(text, tone), waiting(text).
+
+
+5. Styling
+
+
+Only CSS variables from css/base.css for colours (--accent --accent-2 --surface --surface-2 --border --text --muted --good --bad --warn --grad --radius …) so every theme (neon, sunset, ocean, forest, candy, lemon; dark & light) works. Hard-coded colours only for game pieces that need a fixed meaning (red/yellow discs) — and keep them readable on both themes.
+
+Reuse the primitives in css/games.css (.g-card .g-opt .g-lb .g-board .g-cell .g-bar .g-timer .g-actions .g-notice, .btn, .chip, .av…).
+
+Your own rules go in css/g-<cat>.css (the file for your category; create the rules for your activity only, every class prefixed with a short unique prefix, e.g. .c4-board). Never edit another category's file.
+
+Animate (this site is judged on polish): pop-in on new pieces, win lines drawn with stroke-dashoffset, shake on errors, bounce on results, count-up numbers. Use the keyframes in base.css (pop popIn bounceIn shake fadeIn slideInLeft pulseRing heartbeat flipIn) or add your own. Draw game pieces as inline SVG where it makes sense. Everything must also look right with data-anim="off" (animations disabled) — never hide content behind an animation.
+
+Mobile first: must be fully usable at 360 px width (touch targets ≥ 44 px, no horizontal scroll, touch-action set on drawing/drag areas). Check with the smoke test (it runs at 420 px).
+
+Text overflow: names can be long — use .ellipsis, min-width: 0 on flex children.
+
+
+6. Content (quiz, prompts, word lists)
+
+Data goes in js/games/data/<id>.js (plain exported arrays/objects, bilingual {fr, en} entries or two arrays). Quality over
+quantity but enough variety to not repeat in an evening (see each brief). Original wording only; friendly tone (a few
+spicy items only when the brief asks, flagged with the spicy tag). Shuffle with the seeded rng so every client sees the same order.
+
+
+7. Tests (required)
+
+tests/lib.mjs gives you a multi-player harness: N players (each a full RoomCore on an in-memory network) in one page.
+
+
+// tests/games/<id>.test.mjs  — run: node tests/games/<id>.test.mjs
+import { setup, ok, eq } from '../lib.mjs';
+const t = await setup();
+try {
+  const h = await t.open('boards', 'connect4', { players: 3, lang: 'fr', speed: 1 });   // speed: ×N time acceleration
+  await h.peer(0).getByRole('button', { name: /Prendre une place/ }).click();
+  await h.waitText(1, /Alice/);                      // peers: 0 Alice, 1 Bob, 2 Chloé, 3 Dan…
+  await h.api(0, (api) => api.get('m:0'));           // inspect shared state / force a scenario
+  await h.drop(1); await h.restore(1);               // network cut / back
+  await h.page.evaluate(() => window.__h.remount(1)); // simulate a page refresh of player 1
+  await h.setLang('en');
+  await h.shot('c4-win', { peer: 0 });               // → tests/shots/c4-win.png  (LOOK at your screenshots with the Read tool)
+  await h.expectNoErrors();
+} finally { await t.close(); }
+
+Each activity needs: (a) a scenario test tests/games/<id>.test.mjs playing a complete game/round through the UI for
+several players (including a spectator, a reconnection, a page refresh mid-game and an English run), and (b) for non-trivial
+rules a unit test tests/games/<id>.unit.test.mjs with node:test on the exported pure functions.
+Then: node tools/build-registry.mjs --check <cat> (lints your files: no innerHTML, no network, no Date.now…) and
+node tests/smoke.mjs <id> (lobby → start → render in FR/EN at phone width, drop/restore, late joiner, zero JS errors).
+Look at your screenshots (Read tool on the PNG) at desktop and phone width and fix what looks off.
+
+
+Do not run npm install / playwright install (no network); Playwright and Chromium are already set up.
+The machine has 2 CPUs shared with other agents: run only your own tests, one at a time.
+
+
+8. Done checklist
+
+
+ Works for the full range min…max players, spectators can watch, late joiners and refreshes see the right state
+
+ FR and EN complete (no key shown raw, no undefined), text fits on a phone
+
+ Rematch / next round works; leaving to the lobby works; nobody can get stuck if a player disconnects
+
+ Animations + sounds (api.sound) + confetti on victory; looks good with the 6 themes and with animations off
+
+ Scenario test + unit test pass; build-registry --check and smoke pass; screenshots reviewed
+
+ No file outside your own list was modified
+
